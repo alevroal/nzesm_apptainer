@@ -12,8 +12,9 @@ From: intel/hpckit:2024.2.1-0-devel-ubuntu22.04
 %files
     # copy files from host to the container prior to calling %post
     # SOURCE DESTINATION. SOURCE is always on the host. DESTINATION is by default in container
-    # ADAPT!!!!!
     /Users/home/alevroal/BISICLES/Chombo /usr/local/build
+    /Users/home/alevroal/BISICLES/cism /usr/local/build
+    /Users/home/alevroal/BISICLES/wrappers /usr/local/build
     packages/unicicles/wrappers/ukesm-ice_NETCDF/Makefile.gnu /opt/nzesm_apptainer/Makefile.gnu
     packages/bisicles-uob/code/cdriver/GNUmakefile /opt/nzesm_apptainer/GNUmakefile
     
@@ -146,7 +147,6 @@ From: intel/hpckit:2024.2.1-0-devel-ubuntu22.04
     ls -l ${PNETCDF}/bin
 
     # local copy of the code, want to get rid of
-    export BIKEFILES=$HOME/unicicles_files/
 
     export HDF5_LIBDIR=/usr/local/lib
     export HDF5_INCDIR=/usr/local/include
@@ -155,14 +155,10 @@ From: intel/hpckit:2024.2.1-0-devel-ubuntu22.04
     export PYTHONLIBS=/usr/lib/python3.12
 
     export BISICLES_HOME=$BUILD_DIR
-    export GLIM_DIR=/usr/local
+    export GLIM_DIR=$BISICLES_HOME/cism/parallel
 
     echo "\n\nBuilding chombo..."
     cd $BUILD_DIR
-    # svn co https://anag-repo.lbl.gov/svn/Chombo/release/3.2 Chombo #requires an anag repository account
-    # the git repo is missing CoDimCopier.H
-    #git clone https://github.com/applied-numerical-algorithms-group-lbnl/Chombo_3.2.git
-    #ln -s Chombo-3.2 Chombo
     cd Chombo/lib
     wget https://raw.githubusercontent.com/pletzer/nzesm_apptainer/main/packages/chombo/gnu/Make.defs.local
     mv Make.defs.local mk/
@@ -184,27 +180,27 @@ From: intel/hpckit:2024.2.1-0-devel-ubuntu22.04
 
     echo "\n\nBuilding glimmer-cism..."
     cd $BUILD_DIR
-    git clone https://github.com/ggslc/unicicles.git
-    cd unicicles/glimmer-cism
+    cd cism/cism-src
     ./bootstrap
-    cd ..
-    mkdir parallel
-    cd parallel
+    cd $BUILD_DIR
+    mkdir cism/parallel
+    cd cism/parallel
     FC=mpif90 CXX=g++ \
     FCFLAGS="-fno-range-check -ffree-line-length-0 -DBISICLES_CDRIVER -DNO_RESCALE -fallow-argument-mismatch -fallow-invalid-boz -g -I$BISICLES_HOME/bisicles-uob/code/src " \
-    LDFLAGS=" -L$BISICLES_HOME/bisicles-uob/code/lib -lBisicles2d.Linux.64.mpicxx.gfortran.OPT.MPI -lChomboLibs2d.Linux.64.mpicxx.gfortran.OPT.MPI -lstdc++ -lcrypt -lpthread -ldl -lutil -lm " \
-    ../glimmer-cism/configure \
+    LDFLAGS=" -L$BISICLES_HOME/bisicles-uob/code/cdriver -L$BISICLES_HOME/bisicles-uob/code/lib -lBisicles2d.Linux.64.mpicxx.gfortran.OPT.MPI -lChomboLibs2d.Linux.64.mpicxx.gfortran.OPT.MPI -lstdc++ -lcrypt -lpthread -ldl -lutil -lm -lz" \
+    ../cism-src/configure \
     --with-netcdf-lib=$NETCDF_LIBDIR --with-netcdf-include=$NETCDF_INCDIR \
     --with-hdf5-lib=$HDF5_LIBDIR --with-hdf5-include=$HDF5_INCDIR \
-    --enable-mpi --prefix=/usr/local/ --disable-python
-    make
+    --enable-mpi --prefix=$BUILD_DIR/cism/parallel/ --disable-python
+    
+    mv $BUILD_DIR/cism/iofiles/glide_io.F90 $BUILD_DIR/cism/parallel/libglide/glide_io.F90
+    mv $BUILD_DIR/cism/iofiles/glint_io.F90 $BUILD_DIR/cism/parallel/libglint/glint_io.F90
+    mv $BUILD_DIR/cism/iofiles/glint_mbal_io.F90 $BUILD_DIR/cism/parallel/libglint/glint_mbal_io.F90
+    make -d
     make install
 
-    echo "Building unicicles wrapper from github..."
-    cd $BUILD_DIR/unicicles/wrappers/ukesm-ice_NETCDF
+    echo "\n\nBuilding unicicles wrapper"
+    cd $BUILD_DIR/wrappers
     cp /opt/nzesm_apptainer/Makefile.gnu .
     make clean -f Makefile.gnu
     make -f Makefile.gnu
-    # cp $BIKEFILES/Makefile.maui .
-    # make clean -f Makefile.maui
-    # make -f Makefile.maui
