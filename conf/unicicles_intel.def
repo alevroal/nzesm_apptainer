@@ -46,6 +46,8 @@ From: intel/hpckit:2024.2.1-0-devel-ubuntu22.04
     NETCDF_FORTRAN_VERSION="4.6.1"
     NETCDF_CXX_VERSION="4.3.1"
     PNETCDF_VERSION="1.12.3"
+    FFTW_VERSION="3.3.10"
+
 
     # compilers
     export CC=gcc
@@ -60,6 +62,8 @@ From: intel/hpckit:2024.2.1-0-devel-ubuntu22.04
     export NETCDF=/usr/local
     export HDF5=/usr/local
     export PNETCDF=/usr/local
+    export FFTW=/usr/local
+
 
     # hdf5
     cd $BUILD_DIR
@@ -146,7 +150,21 @@ From: intel/hpckit:2024.2.1-0-devel-ubuntu22.04
     ls -l ${PNETCDF}/include
     ls -l ${PNETCDF}/bin
 
-    # local copy of the code, want to get rid of
+    # fftw3
+    cd $BUILD_DIR
+    wget https://www.fftw.org/fftw-${FFTW_VERSION}.tar.gz
+    tar xf fftw-${FFTW_VERSION}.tar.gz
+    cd fftw-${FFTW_VERSION}
+    mkdir build 
+    cd build
+    MPICC=$MPICC FC=$FC ../configure --prefix=${FFTW} --enable-openmp --enable-mpi --enable-avx2 --enable-avx512
+    make -j 4
+    make install
+    cd ../..
+    rm -rf fftw-${FFTW_VERSION}.tar.gz
+    ls -l ${FFTW}/lib
+    ls -l ${FFTW}/include
+    ls -l ${FFTW}/bin
 
     export HDF5_LIBDIR=/usr/local/lib
     export HDF5_INCDIR=/usr/local/include
